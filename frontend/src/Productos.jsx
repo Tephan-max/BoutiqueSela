@@ -14,7 +14,7 @@ function Productos({ categoria, setCategoria,
 
     //Obtener productos
     useEffect(() => {
-        fetch('http://localhost:3000/productos')
+        fetch('https://boutiquesela.onrender.com/productos')
             .then(res => res.json())
             .then(data => {
                 let productos = data.data
