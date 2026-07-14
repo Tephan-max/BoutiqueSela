@@ -63,8 +63,6 @@ function Productos({ categoria, setCategoria,
                     }
                 }
             }
-
-            actualizacionProductos = agregarPosicionProductos(actualizacionProductos)
             setProductos(actualizacionProductos)
             actualizarProductosMostrar(obtenerProductosSinCarrito(actualizacionProductos),
                 categoria, orden)
