@@ -10,21 +10,30 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
 
     const [productos, setProductos] = useState([])
     const [productosMostrar, setProductosMostrar] = useState([])
+    const [cargando, setCargando] = useState(true)
 
     // Obtener productos
     useEffect(() => {
-        fetch('https://boutiquesela.onrender.com/productos')
-            .then(res => res.json())
-            .then(data => {
+        const obtenerProductos = async () => {
+            try {
+                const res = await fetch('https://boutiquesela.onrender.com/productos')
+                const data = await res.json()
+
                 let productos = data.data
                 productos = productos.map(producto => {
                     producto.posicionImagen = 0
                     return producto
                 })
                 setProductos(productos)
-                actualizarProductosMostrar(obtenerProductosSinCarrito([...productos]),
-                    categoria, orden)
-            })
+                actualizarProductosMostrar(obtenerProductosSinCarrito([...productos]), categoria, orden)
+            } catch (error) {
+                console.error("Error al obtener productos:", error)
+            } finally {
+                setCargando(false)
+            }
+        }
+
+        obtenerProductos()
     }, [])
 
     // Escuchar evento de socket.io cuando haya cambios en productos  
@@ -173,11 +182,11 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
 
             {/* Contenedor fluido de boutique */}
             <main className="max-w-7xl mx-auto px-4 sm:px-8 py-12">
-                
+
                 {/* Sección de Filtros - Minimalista y limpia */}
                 <div className="border-b border-gray-100 pb-8 mb-12 flex flex-col md:flex-row gap-8 items-start md:items-end justify-between">
                     <div className="flex flex-col md:flex-row gap-6 w-full md:w-auto">
-                        
+
                         {/* Selector Categoría */}
                         <div className="flex flex-col gap-1.5 w-full md:w-48">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Categoría</span>
@@ -185,7 +194,7 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
                                 <select
                                     className="w-full border-b border-gray-200 rounded-none py-2 text-xs uppercase tracking-wider text-gray-800 bg-transparent focus:outline-none focus:border-black cursor-pointer appearance-none"
                                     onChange={(e) => { categoriaRef.current = e.target.value }}>
-                                    {['Todas', 'Carteras', 'Calzado', 'Ropa'].map(elemento => (
+                                    {['Todas', 'Accesorios o Complementos', 'Calzado', 'Ropa'].map(elemento => (
                                         <option key={elemento} value={elemento} selected={elemento === categoria}>
                                             {elemento}
                                         </option>
@@ -230,18 +239,20 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
                     </button>
                 </div>
 
-                {/* Mostrar productos u hoja de vacío */}
-                {productosMostrar.length === 0 ? (
+                {/* LOGICA DE PANTALLAS: CARGANDO -> VACÍO -> PRODUCTOS */}
+                {cargando ? (
+                    /* Pantalla de Carga Minimalista */
+                    <div className="flex flex-col items-center justify-center py-32 space-y-4">
+                        <div className="w-8 h-8 border-2 border-gray-200 border-t-black rounded-full animate-spin"></div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-[0.2em] animate-pulse">Obteniendo colección...</p>
+                    </div>
+                ) : productosMostrar.length === 0 ? (
+                    /* Pantalla de catálogo vacío */
                     <div className="text-center py-24 border border-gray-100">
                         <p className="text-gray-400 text-xs uppercase tracking-widest">No hay artículos disponibles</p>
                     </div>
                 ) : (
-                    /* Grid Responsivo Minimalista:
-                       - 1 columna en móvil para apreciar los detalles de la ropa
-                       - 2 en móvil ancho/tablet
-                       - 3 en desktop estándar
-                       - 4 en pantallas amplias
-                    */
+                    /* Grid de productos */
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-12">
                         {productosMostrar.map((producto, index) => (
                             <div
@@ -256,8 +267,7 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
                                         alt={producto.marca}
                                     />
 
-                                    {/* Flechas de navegación para imágenes múltiples.
-                                        Fijas en táctil (móvil) y hover elegante en PC */}
+                                    {/* Flechas de navegación para imágenes múltiples */}
                                     {producto.imgs.length > 1 && (
                                         <div className="absolute inset-0 flex items-center justify-between px-2 md:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                             <button
