@@ -11,7 +11,7 @@ const iniciarServidor = async (app) => {
         const PORT = process.env.PORT || 3000;
 
         server.listen(PORT, () => {
-            console.log('Servidor corriendo en http://localhost:3000');
+            console.log(`Servidor corriendo en ${process.env.PORT}`);
         });
     }
     catch (error) {

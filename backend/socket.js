@@ -5,7 +5,7 @@ let io
 const inicializarIo = (server) => {
     io = new Server(server, {
         cors: {
-            origin: "https://boutiquesela-1.onrender.com/"
+            origin: "https://boutiquesela-1.onrender.com"
         }
     })
 
