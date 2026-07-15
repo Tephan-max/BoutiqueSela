@@ -75,10 +75,17 @@ function Carrito() {
 
     return (
         <div className="min-h-screen bg-white text-gray-900 font-sans antialiased">
-            <Cabecera paths={[
-                { ruta: '/contacto', texto: 'Contacto' },
-                { ruta: '/', texto: 'Catalogo' }
-            ]} />
+
+            {productos.length == 0 ?
+                <Cabecera paths={[
+                    { ruta: '/contacto', texto: 'Contacto' }
+                ]} />
+                :
+                <Cabecera paths={[
+                    { ruta: '/contacto', texto: 'Contacto' },
+                    { ruta: '/', texto: 'Catalogo' }
+                ]} />
+            }
 
             {/* Total acumulado - Flotante elegante en la esquina derecha */}
             {productos.length > 0 && (
