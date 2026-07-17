@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react"
 
-function Producto({producto, flecha, agregarAlCarrito }) {
+function ProductoCarrito({ producto, flecha, eliminarProducto }) {
 
     const [posicion, setPosicion] = useState(0)
 
     useEffect(() => {
         const tamañoImagenes = producto.imgs.length
-        if(posicion >= tamañoImagenes){
+        if (posicion >= tamañoImagenes) {
             setPosicion(tamañoImagenes - 1)
         }
     }, [producto.imgs.length])
@@ -34,9 +34,9 @@ function Producto({producto, flecha, agregarAlCarrito }) {
     return (
         <>
             <div
-                className="group bg-white flex flex-col justify-between transition-all duration-300 border-b border-gray-100 pb-6 md:border-b-0 md:pb-0"
+                className="group bg-white flex flex-col justify-between border-b border-gray-100 pb-6 md:border-b-0 md:pb-0"
             >
-                {/* Contenedor de Imagen con proporción editorial (3:4) */}
+                {/* Contenedor de Imagen (Aspecto 3:4 idéntico al catálogo) */}
                 <div className="relative overflow-hidden aspect-[4/4] bg-gray-50">
                     <img
                         src={producto.imgs[posicion]}
@@ -44,7 +44,7 @@ function Producto({producto, flecha, agregarAlCarrito }) {
                         alt={producto.marca}
                     />
 
-                    {/* Flechas de navegación para imágenes múltiples */}
+                    {/* Flechas de navegación adaptadas al estilo Zara */}
                     {producto.imgs.length > 1 && (
                         <div className="absolute inset-0 flex items-center justify-between px-2 md:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                             <button
@@ -64,12 +64,12 @@ function Producto({producto, flecha, agregarAlCarrito }) {
                     )}
                 </div>
 
-                {/* Información del Producto alineada y espaciada */}
+                {/* Detalles del producto en el carrito */}
                 <div className="pt-4 flex flex-col flex-grow justify-between text-center">
                     <div className="space-y-1">
-                        <h2 className="font-semibold text-gray-900 text-xs tracking-wider uppercase">
+                        <h3 className="font-semibold text-gray-900 text-xs tracking-wider uppercase">
                             {producto.marca}
-                        </h2>
+                        </h3>
                         <p className="text-[10px] text-gray-400 tracking-widest uppercase">
                             TALLA {producto.talla}
                         </p>
@@ -78,12 +78,12 @@ function Producto({producto, flecha, agregarAlCarrito }) {
                         </p>
                     </div>
 
-                    {/* Botón de Añadir sólido, plano y minimalista */}
+                    {/* Botón de eliminar elegante y sutil en lugar de rojo chillón */}
                     <button
-                        className="mt-5 w-full bg-black text-white py-3.5 text-[10px] font-bold tracking-widest uppercase hover:bg-gray-800 transition-colors duration-300 cursor-pointer active:scale-99"
-                        onClick={() => agregarAlCarrito()}
+                        onClick={() => eliminarProducto()}
+                        className="mt-5 w-full bg-transparent hover:bg-red-50 text-red-500 border border-red-100 py-3 text-[10px] font-bold tracking-widest uppercase transition-colors duration-200 cursor-pointer"
                     >
-                        Añadir al carrito
+                        Quitar artículo
                     </button>
                 </div>
             </div>
@@ -91,4 +91,4 @@ function Producto({producto, flecha, agregarAlCarrito }) {
     )
 }
 
-export default Producto
+export default ProductoCarrito
