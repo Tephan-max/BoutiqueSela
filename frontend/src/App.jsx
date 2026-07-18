@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { useState } from "react"
 import Productos from './Productos'
-import Carrito from './Carrito'
+import DetalleProducto from './componentes/DetalleProducto'
 
 function App() {
 
@@ -11,14 +11,18 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Catálogo Principal */}
         <Route path='/' element={
-          <Productos 
-            categoria={categoria} 
+          <Productos
+            categoria={categoria}
             setCategoria={setCategoria}
             orden={orden}
             setOrden={setOrden}
-            />}/>
-        <Route path='/carrito' element= {<Carrito/>}/>
+          />
+        } />
+
+        {/* Detalle del Producto */}
+        <Route path='/producto' element={<DetalleProducto />} />
       </Routes>
     </BrowserRouter>
   )
