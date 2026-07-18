@@ -1,228 +1,300 @@
-import { useEffect, useState } from "react"
-import { useSearchParams, useNavigate } from "react-router-dom"
-import Cabecera from "./Cabecera" // Ajusta la ruta según tus carpetas
+import { useState, useEffect } from "react";
+import { useSearchParams, Link } from "react-router-dom";
+import Cabecera from "./Cabecera";
+import Footer from "./Footer";
 
 function DetalleProducto() {
-    const [searchParams] = useSearchParams()
-    const navigate = useNavigate()
-    const idProducto = searchParams.get("id")
+    const [searchParams] = useSearchParams();
+    const idProducto = searchParams.get("id");
 
-    const [producto, setProducto] = useState(null)
-    const [cargando, setCargando] = useState(true)
-    const [imagenSeleccionada, setImagenSeleccionada] = useState(0)
-    const [tallaSeleccionada, setTallaSeleccionada] = useState("")
-    const [errorTalla, setErrorTalla] = useState(false)
-    const [agregado, setAgregado] = useState(false)
+    const [producto, setProducto] = useState(null);
+    const [tallaSeleccionada, setTallaSeleccionada] = useState(null);
+    const [cantidad, setCantidad] = useState(1);
+    const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
+    const [cargando, setCargando] = useState(true);
+    const [toast, setToast] = useState(null);
+
+    // 🔥 Fuerza a la página a empezar desde arriba cada vez que cambia el producto
+    useEffect(() => {
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: "instant" // Usamos "instant" para que no se note el salto visual mientras carga
+        });
+    }, [idProducto]);
 
     useEffect(() => {
         if (!idProducto) {
-            navigate("/")
-            return
+            setCargando(false);
+            return;
         }
 
         const obtenerDetalle = async () => {
             try {
-                const res = await fetch(`https://boutiquesela.onrender.com/productos`)
-                const data = await res.json()
-                // Buscamos el producto específico en el array devuelto por tu API
-                const encontrado = data.data.find(p => p._id === idProducto)
+                const res = await fetch("https://boutiquesela.onrender.com/productos");
 
-                if (encontrado) {
-                    setProducto(encontrado)
-                } else {
-                    navigate("/")
+                if (!res.ok) throw new Error("Error al obtener el catálogo");
+
+                const json = await res.json();
+                const listaProductos = Array.isArray(json) ? json : json.data;
+                const productoEncontrado = listaProductos?.find(item => item._id === idProducto);
+
+                if (productoEncontrado) {
+                    setProducto(productoEncontrado);
+
+                    const primeraTallaDisponible = productoEncontrado.inventario?.find(item => item.stock > 0);
+                    if (primeraTallaDisponible) {
+                        setTallaSeleccionada(primeraTallaDisponible.talla);
+                    }
                 }
             } catch (error) {
-                console.error("Error al obtener el producto:", error)
+                console.error("Error en la carga del detalle:", error);
             } finally {
-                setCargando(false)
+                setCargando(false);
             }
-        }
+        };
 
-        obtenerDetalle()
-    }, [idProducto, navigate])
+        obtenerDetalle();
+    }, [idProducto]);
 
-    const manejarAgregarCarrito = () => {
-        // Validación de talla (Paso crucial para ropa/calzado)
-        if (!tallaSeleccionada && producto.categoria !== "Accesorios o Complementos") {
-            setErrorTalla(true)
-            return
-        }
+    useEffect(() => {
+        setCantidad(1);
+    }, [tallaSeleccionada]);
 
-        let carrito = JSON.parse(localStorage.getItem("carrito")) || []
-
-        // Creamos el objeto guardando la talla elegida por el cliente
-        const productoParaCarrito = {
-            ...producto,
-            tallaElegida: tallaSeleccionada || "U"
-        }
-
-        carrito.push(productoParaCarrito)
-        localStorage.setItem("carrito", JSON.stringify(carrito))
-
-        // Notificamos a la Cabecera para que actualice el contador al instante
-        window.dispatchEvent(new Event("cambioCarrito"))
-
-        // Efecto visual de éxito en el botón
-        setAgregado(true)
-        setTimeout(() => setAgregado(false), 2000)
-        // Dentro de manejarAgregarCarrito en DetalleProducto:
-        window.dispatchEvent(new Event("cambioCarrito"))
-
-        // 🔥 AÑADE ESTA LÍNEA JUSTO ABAJO PARA QUE SE DESLICE SOLO AL COMPRAR:
-        window.dispatchEvent(new Event("abrirCarrito"))
-    }
+    const mostrarToast = (mensaje, tipo = 'info') => {
+        setToast({ mensaje, tipo });
+        setTimeout(() => setToast(null), 2800);
+    };
 
     if (cargando) {
         return (
-            <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-4">
-                <div className="w-6 h-6 border-2 border-gray-200 border-t-black rounded-full animate-spin"></div>
-                <p className="text-[10px] uppercase tracking-widest text-gray-400">Cargando pieza...</p>
+            <div className="min-h-screen bg-white flex flex-col justify-between">
+                <Cabecera paths={[{ ruta: '/contacto', texto: 'Contacto' }, { ruta: '/carrito', texto: 'Carrito' }]} />
+                <div className="flex flex-col items-center justify-center py-32 space-y-4 flex-grow">
+                    <div className="w-8 h-8 border-2 border-gray-200 border-t-black rounded-full animate-spin"></div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-[0.2em] animate-pulse">Cargando pieza...</p>
+                </div>
+                <Footer />
             </div>
-        )
+        );
     }
 
-    if (!producto) return null
+    if (!producto) {
+        return (
+            <div className="min-h-screen bg-white flex flex-col justify-between">
+                <Cabecera paths={[{ ruta: '/contacto', texto: 'Contacto' }, { ruta: '/carrito', texto: 'Carrito' }]} />
+                <div className="text-center py-32 flex-grow">
+                    <p className="text-gray-400 text-xs uppercase tracking-widest">Pieza no encontrada</p>
+                </div>
+                <Footer />
+            </div>
+        );
+    }
 
-    const tieneMultiplesImgs = producto.imgs && producto.imgs.length > 0
-    const imagenes = tieneMultiplesImgs ? producto.imgs : ["https://via.placeholder.com/600x800"]
-    // Array simulado de tallas premium. Si tu API ya trae tallas, puedes reemplazarlo por producto.tallas
-    const listaTallas = producto.categoria === "Calzado" ? ["36", "37", "38", "39"] : ["S", "M", "L"]
+    const varianteElegida = producto.inventario?.find(item => item.talla === tallaSeleccionada);
+    const tieneStock = varianteElegida ? varianteElegida.stock > 0 : false;
+    const stockMaximo = varianteElegida ? varianteElegida.stock : 0;
+
+    const incrementarCantidad = () => {
+        if (cantidad < stockMaximo) setCantidad(prev => prev + 1);
+    };
+
+    const decrementarCantidad = () => {
+        if (cantidad > 1) setCantidad(prev => prev - 1);
+    };
+
+    const añadirAlCarrito = () => {
+        if (!tallaSeleccionada) {
+            mostrarToast("Selecciona una talla para continuar", 'error');
+            return;
+        }
+        if (cantidad < 1 || cantidad > stockMaximo) {
+            mostrarToast("Cantidad no válida", 'error');
+            return;
+        }
+
+        let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+        const itemCarritoId = `${producto._id}_${tallaSeleccionada}`;
+
+        const productoParaCarrito = {
+            idUnico: itemCarritoId,
+            _id: producto._id,
+            marca: producto.marca,
+            precio: producto.precio,
+            img: producto.imgs?.[0] || '',
+            talla: tallaSeleccionada,
+            cantidad: cantidad,
+            stockMaximo: stockMaximo
+        };
+
+        const existe = carrito.find(item => item.idUnico === itemCarritoId);
+
+        if (existe) {
+            if (existe.cantidad + cantidad <= stockMaximo) {
+                existe.cantidad += cantidad;
+            } else {
+                mostrarToast(`Stock disponible: ${stockMaximo} unidades. Ya tienes ${existe.cantidad} en tu bolsa`, 'error');
+                return;
+            }
+        } else {
+            carrito.push(productoParaCarrito);
+        }
+
+        localStorage.setItem("carrito", JSON.stringify(carrito));
+        window.dispatchEvent(new Event("cambioCarrito"));
+        mostrarToast("Añadido al guardarropa", 'exito');
+    };
 
     return (
-        <div className="min-h-screen bg-white text-gray-900 font-sans antialiased pb-20">
-            <Cabecera paths={[
-                { ruta: '/contacto', texto: 'Contacto' },
-                { ruta: '/carrito', texto: 'Carrito' }
-            ]} />
+        <div className="min-h-screen bg-white text-gray-900 font-sans antialiased flex flex-col justify-between select-none">
+            <Cabecera paths={[{ ruta: '/contacto', texto: 'Contacto' }, { ruta: '/carrito', texto: 'Carrito' }]} />
 
-            <main className="max-w-6xl mx-auto px-4 sm:px-8 pt-8 md:pt-16">
-                {/* Botón de retorno sutil */}
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center space-x-2 text-[10px] uppercase tracking-widest text-gray-400 hover:text-black mb-8 transition-colors duration-200"
+            <div className="max-w-6xl mx-auto px-4 pt-6 w-full">
+                <Link
+                    to="/"
+                    className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-gray-500 hover:text-black transition-colors"
                 >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                     </svg>
-                    <span>Volver al catálogo</span>
-                </button>
+                    Volver al catálogo
+                </Link>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-16 items-start">
+            <main className="max-w-6xl mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 flex-grow items-start w-full">
 
-                    {/* COLUMNA IZQUIERDA: SISTEMA DE IMÁGENES (7 de 12 columnas) */}
-                    <div className="md:col-span-7 flex flex-col-reverse sm:flex-row gap-3">
+                {/* Contenedor de Imágenes */}
+                <div className="w-full md:col-span-7 flex flex-col md:flex-row gap-4">
 
-                        {/* Lista de Miniaturas Laterales (Escondido en móviles pequeños si es incómodo, deslizable) */}
-                        {imagenes.length > 1 && (
-                            <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-x-visible justify-start flex-shrink-0 sm:w-16">
-                                {imagenes.map((img, index) => (
+                    {/* Imagen Principal */}
+                    <div className="order-1 md:order-2 flex-1 aspect-[3/4] bg-gray-50 overflow-hidden border border-neutral-100">
+                        <img
+                            src={producto.imgs?.[imagenSeleccionada] || producto.imgs?.[0]}
+                            alt={producto.marca}
+                            className="w-full h-full object-cover transition-all duration-300"
+                        />
+                    </div>
+
+                    {/* Miniaturas: izquierda en PC, abajo en celular */}
+                    {producto.imgs && producto.imgs.length > 1 && (
+                        <div className="order-2 md:order-1 flex md:flex-col flex-row gap-2.5 max-h-none md:max-h-[500px] pb-2 md:pb-0 overflow-x-auto md:overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+                            {producto.imgs.map((img, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => setImagenSeleccionada(index)}
+                                    className={`w-16 h-20 md:w-20 md:h-24 flex-shrink-0 bg-neutral-50 overflow-hidden border transition-all cursor-pointer ${imagenSeleccionada === index
+                                        ? 'border-black opacity-100 shadow-sm md:scale-[0.98]'
+                                        : 'border-gray-200 opacity-60 hover:opacity-100'
+                                        }`}
+                                >
+                                    <img src={img} alt="" className="w-full h-full object-cover" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Detalles y Compra */}
+                <div className="w-full md:col-span-5 flex flex-col justify-center pt-2">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-2">{producto.categoria}</span>
+                    <h1 className="text-xl uppercase tracking-wider font-medium mb-2">{producto.marca}</h1>
+                    <p className="text-sm font-semibold mb-6">S/ {Number(producto.precio).toFixed(2)}</p>
+                    <p className="text-xs text-gray-600 tracking-wide leading-relaxed mb-8">{producto.descripcion}</p>
+
+                    <div className="mb-6">
+                        <h3 className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-3">Seleccionar Talla</h3>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {producto.inventario?.map((item) => {
+                                const sinStock = item.stock === 0;
+                                const esSeleccionada = tallaSeleccionada === item.talla;
+
+                                return (
                                     <button
-                                        key={index}
-                                        onClick={() => setImagenSeleccionada(index)}
-                                        className={`w-14 h-20 sm:w-full aspect-[3/4] bg-gray-50 overflow-hidden border transition-all duration-200 flex-shrink-0 ${imagenSeleccionada === index ? "border-black" : "border-transparent opacity-60 hover:opacity-100"
+                                        key={item.talla}
+                                        disabled={sinStock}
+                                        onClick={() => setTallaSeleccionada(item.talla)}
+                                        className={`px-4 py-2.5 text-xs uppercase tracking-wider border transition-all duration-200 ${sinStock
+                                            ? 'border-gray-100 text-gray-300 line-through cursor-not-allowed bg-gray-50/50'
+                                            : esSeleccionada
+                                                ? 'bg-black text-white border-black font-medium'
+                                                : 'bg-white text-gray-800 border-gray-200 hover:border-black'
                                             }`}
                                     >
-                                        <img src={img} className="w-full h-full object-cover" alt="" />
+                                        {item.talla}
                                     </button>
-                                ))}
-                            </div>
-                        )}
+                                );
+                            })}
+                        </div>
 
-                        {/* Contenedor Imagen Principal */}
-                        <div className="w-full bg-gray-50 aspect-[3/4] overflow-hidden relative">
-                            <img
-                                src={imagenes[imagenSeleccionada]}
-                                className="w-full h-full object-cover transition-all duration-500"
-                                alt={producto.marca}
-                            />
+                        <div className="min-h-[16px]">
+                            {tallaSeleccionada && (
+                                <p className={`text-[11px] font-medium transition-all duration-200 ${tieneStock ? 'text-gray-500' : 'text-red-500'}`}>
+                                    {tieneStock ? `Disponibles: ${stockMaximo} unidades` : 'Agotado en esta talla'}
+                                </p>
+                            )}
                         </div>
                     </div>
 
-                    {/* COLUMNA DERECHA: SECCIÓN EDITORIAL E INFORMACIÓN (5 de 12 columnas) */}
-                    <div className="md:col-span-5 flex flex-col space-y-6 md:sticky md:top-28">
-                        <div>
-                            <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400 block mb-1">
-                                {producto.categoria}
-                            </span>
-                            <h1 className="text-xl md:text-2xl font-light tracking-wider text-gray-900 uppercase">
-                                {producto.marca}
-                            </h1>
-                            <p className="text-base font-semibold text-gray-950 mt-2 tracking-wide">
-                                S/ {Number(producto.precio).toFixed(2)}
-                            </p>
-                        </div>
-
-                        <hr className="border-gray-100" />
-
-                        {/* Descripción simulada / Detalles de calidad de la prenda */}
-                        <p className="text-xs text-gray-500 leading-relaxed font-light">
-                            Pieza de alta calidad seleccionada meticulosamente para nuestra colección actual. Acabados premium estructurados ideales para elevar cualquier look contemporáneo.
-                        </p>
-
-                        {/* SECTOR DE TALLAS (Solo si no es accesorio) */}
-                        {producto.categoria !== "Accesorios o Complementos" && (
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">
-                                        Seleccionar Talla
-                                    </span>
-                                    {errorTalla && (
-                                        <span className="text-[10px] text-red-500 font-medium">
-                                            Por favor, elige una talla
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {listaTallas.map((talla) => (
-                                        <button
-                                            key={talla}
-                                            onClick={() => {
-                                                setTallaSeleccionada(talla)
-                                                setErrorTalla(false)
-                                            }}
-                                            className={`w-10 h-10 text-xs tracking-wider transition-all duration-200 border flex items-center justify-center ${tallaSeleccionada === talla
-                                                    ? "bg-black text-white border-black"
-                                                    : "bg-white text-gray-900 border-gray-200 hover:border-black"
-                                                }`}
-                                        >
-                                            {talla}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* BOTÓN PRINCIPAL DE COMPRA */}
-                        <div className="pt-4">
-                            <button
-                                onClick={manejarAgregarCarrito}
-                                className={`w-full py-4 text-xs uppercase tracking-[0.2em] transition-all duration-300 font-medium border ${agregado
-                                        ? "bg-emerald-900 text-white border-emerald-900"
-                                        : "bg-black text-white border-black hover:bg-zinc-800"
-                                    }`}
-                            >
-                                {agregado ? "Añadido con éxito" : "Añadir a la bolsa"}
-                            </button>
-                        </div>
-
-                        {/* DETALLES DE ENVÍO MINIMALISTAS */}
-                        <div className="bg-gray-50 p-4 space-y-2 text-[11px] text-gray-500 font-light tracking-wide">
-                            <div className="flex items-center space-x-2">
-                                <span className="w-1.5 h-1.5 bg-black rounded-full"></span>
-                                <p>Envíos inmediatos a todo el Perú de 24 a 48 horas.</p>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <span className="w-1.5 h-1.5 bg-black rounded-full"></span>
-                                <p>Garantía boutique de satisfacción en cada prenda.</p>
+                    {tallaSeleccionada && tieneStock && (
+                        <div className="mb-8">
+                            <h3 className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-3">Cantidad</h3>
+                            <div className="flex items-center border border-gray-200 w-max rounded-lg overflow-hidden">
+                                <button
+                                    onClick={decrementarCantidad}
+                                    disabled={cantidad <= 1}
+                                    className="px-4 py-2 text-sm hover:bg-gray-50 transition-colors disabled:opacity-30 cursor-pointer font-medium"
+                                >
+                                    —
+                                </button>
+                                <span className="px-6 py-2 text-xs font-medium w-12 text-center">
+                                    {cantidad}
+                                </span>
+                                <button
+                                    onClick={incrementarCantidad}
+                                    disabled={cantidad >= stockMaximo}
+                                    className="px-4 py-2 text-sm hover:bg-gray-50 transition-colors disabled:opacity-30 cursor-pointer font-medium"
+                                >
+                                    +
+                                </button>
                             </div>
                         </div>
+                    )}
 
-                    </div>
+                    <button
+                        onClick={añadirAlCarrito}
+                        disabled={!tallaSeleccionada || !tieneStock}
+                        className={`w-full py-4 text-xs uppercase tracking-widest transition-all duration-300 ${tallaSeleccionada && tieneStock
+                            ? 'bg-black text-white hover:bg-gray-900 active:scale-[0.99] cursor-pointer'
+                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            }`}
+                    >
+                        {!tallaSeleccionada
+                            ? 'Selecciona una talla'
+                            : !tieneStock
+                                ? 'Talla sin stock'
+                                : `Añadir ${cantidad} a la bolsa`
+                        }
+                    </button>
                 </div>
             </main>
+
+            {toast && (
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] animate-[fadeInUp_0.3s_ease-out]">
+                    <div className={`flex items-center gap-2.5 px-5 py-3 text-[11px] uppercase tracking-widest font-medium shadow-lg ${toast.tipo === 'error' ? 'bg-white text-red-500 border border-red-100' : 'bg-black text-white'
+                        }`}>
+                        {toast.tipo === 'exito' && (
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        )}
+                        {toast.mensaje}
+                    </div>
+                </div>
+            )}
+
+            
         </div>
-    )
+    );
 }
 
-export default DetalleProducto
+export default DetalleProducto;

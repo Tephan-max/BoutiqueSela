@@ -4,10 +4,10 @@ function Footer() {
     return (
         <footer className="bg-white border-t border-gray-100 text-gray-900 font-sans mt-20">
             {/* Sección Superior: Instagram Link */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 text-center border-b border-gray-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 text-center">
                 <p className="text-[10px] uppercase tracking-[0.25em] text-gray-400 mb-3">Síguenos en nuestro diario visual</p>
                 <a 
-                    href="https://www.instagram.com/bouti_quesela/" // Cambia por tu perfil real
+                    href="https://www.instagram.com/bouti_quesela/"
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="inline-flex items-center space-x-2 text-xs uppercase tracking-widest font-medium hover:text-gray-500 transition-colors duration-300"
@@ -21,35 +21,8 @@ function Footer() {
                 </a>
             </div>
 
-            {/* Sección Media: Enlaces Legales y de Ayuda */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-8 py-12 grid grid-cols-2 md:grid-cols-3 gap-8 text-left">
-                <div>
-                    <h4 className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-semibold mb-4">Ayuda</h4>
-                    <ul className="space-y-2 text-xs tracking-wide text-gray-600">
-                        <li><a href="/envios" className="hover:text-black transition-colors">Envíos y Entregas</a></li>
-                        <li><a href="/cambios" className="hover:text-black transition-colors">Cambios y Devoluciones</a></li>
-                        <li><a href="/contacto" className="hover:text-black transition-colors">Contacto</a></li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <h4 className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-semibold mb-4">La Boutique</h4>
-                    <ul className="space-y-2 text-xs tracking-wide text-gray-600">
-                        <li><a href="/nosotros" className="hover:text-black transition-colors">Nuestra Historia</a></li>
-                        <li><a href="/sostenibilidad" className="hover:text-black transition-colors">Sostenibilidad</a></li>
-                    </ul>
-                </div>
-
-                <div className="col-span-2 md:col-span-1">
-                    <h4 className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-semibold mb-4">Métodos de Pago</h4>
-                    <p className="text-xs text-gray-500 tracking-wide leading-relaxed">
-                        Aceptamos transferencias bancarias, tarjetas de crédito y plataformas de pago seguro.
-                    </p>
-                </div>
-            </div>
-
             {/* Sección Inferior: Copyright */}
-            <div className="bg-gray-50 py-6 text-center text-[10px] uppercase tracking-[0.15em] text-gray-400 px-4">
+            <div className="bg-gray-50 py-6 text-center text-[10px] uppercase tracking-[0.15em] text-gray-400 px-4 border-t border-gray-100">
                 © {new Date().getFullYear()} Boutique Sela. Todos los derechos reservados.
             </div>
         </footer>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import CarritoDrawer from "./CarritoDrawer" // Importar el nuevo Carrito Drawer
+import { useNavigate, Link } from "react-router-dom"
+import CarritoDrawer from "./CarritoDrawer" 
 
 function Cabecera({ paths }) {
     const navigate = useNavigate()
@@ -8,7 +8,8 @@ function Cabecera({ paths }) {
 
     const calcularCantidad = () => {
         const carrito = JSON.parse(localStorage.getItem("carrito")) || []
-        setCantidadCarrito(carrito.length)
+        const totalUnidades = carrito.reduce((acc, item) => acc + (item.cantidad || 1), 0)
+        setCantidadCarrito(totalUnidades)
     }
 
     useEffect(() => {
@@ -36,7 +37,8 @@ function Cabecera({ paths }) {
 
                     {/* Navegación */}
                     <nav className="flex gap-6 items-center justify-end">
-                        {paths.map((path) => {
+                        {paths?.map((path) => {
+                            // Caso 1: Enlace externo a WhatsApp (Contacto)
                             if (path.ruta === "/contacto") {
                                 return (
                                     <a
@@ -52,12 +54,13 @@ function Cabecera({ paths }) {
                                 )
                             }
 
+                            // Caso 2: Botón disparador del Carrito Drawer
                             if (path.ruta === "/carrito") {
                                 return (
                                     <button
                                         key={path.ruta}
-                                        onClick={() => window.dispatchEvent(new Event("abrirCarrito"))} // 🔥 Dispara la apertura del drawer
-                                        className="relative p-2 text-gray-500 hover:text-black transition-colors duration-300 group flex items-center"
+                                        onClick={() => window.dispatchEvent(new Event("abrirCarrito"))} 
+                                        className="relative p-2 text-gray-500 hover:text-black transition-colors duration-300 group flex items-center cursor-pointer"
                                         aria-label="Ver carrito"
                                     >
                                         <svg className="w-5 h-5 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,7 +68,8 @@ function Cabecera({ paths }) {
                                         </svg>
 
                                         {cantidadCarrito > 0 && (
-                                            <span className="absolute -top-0.5 -right-0.5 bg-black text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center scale-95">
+                                            /* 🌟 CORRECCIÓN: 'min-w-[18px]' y 'px-1' evita deformaciones cuando la cantidad pasa a 10+ unidades */
+                                            <span className="absolute -top-0.5 -right-0.5 bg-black text-white text-[9px] font-bold min-w-[18px] h-4.5 rounded-full flex items-center justify-center scale-90 px-1 transition-all select-none">
                                                 {cantidadCarrito}
                                             </span>
                                         )}
@@ -73,13 +77,23 @@ function Cabecera({ paths }) {
                                 )
                             }
 
-                            return null
+                            // Caso 3: Soporte para rutas internas estándar (p. ej., Catálogo, Nosotros)
+                            return (
+                                <Link
+                                    key={path.ruta}
+                                    to={path.ruta}
+                                    className="relative text-[11px] font-medium uppercase tracking-[0.15em] text-gray-500 hover:text-black transition-colors duration-300 py-1 group"
+                                >
+                                    {path.texto}
+                                    <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-black transition-all duration-300 group-hover:w-full"></span>
+                                </Link>
+                            )
                         })}
                     </nav>
                 </div>
             </header>
 
-            {/* 🔥 RENDERIZAMOS EL DRAWER AQUÍ GLOBALMENTE */}
+            {/* Instancia única global del Drawer */}
             <CarritoDrawer />
         </>
     )
