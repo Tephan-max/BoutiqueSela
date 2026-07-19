@@ -3,10 +3,57 @@ import { useEffect, useState } from "react"
 function CarritoDrawer() {
     const [isOpen, setIsOpen] = useState(false)
     const [items, setItems] = useState([])
+    const [validando, setValidando] = useState(false)
 
-    const cargarCarrito = () => {
-        const carrito = JSON.parse(localStorage.getItem("carrito")) || []
-        setItems(carrito)
+    const cargarCarrito = async () => {
+        const carritoGuardado = JSON.parse(localStorage.getItem("carrito")) || []
+
+        if (carritoGuardado.length === 0) {
+            setItems([])
+            return
+        }
+
+        setValidando(true)
+
+        try {
+            const res = await fetch('https://boutiquesela.onrender.com/productos')
+            const data = await res.json()
+            const productosActuales = data.data || []
+
+            const carritoValidado = carritoGuardado
+                .map(item => {
+                    const productoActual = productosActuales.find(p => p._id === item._id)
+
+                    if (!productoActual) return null
+
+                    const inventarioItem = productoActual.inventario?.find(inv => inv.talla === item.talla)
+
+                    if (!inventarioItem || inventarioItem.stock === 0) return null
+
+                    const itemActualizado = {
+                        ...item,
+                        marca: productoActual.marca,
+                        precio: productoActual.precio,
+                        img: productoActual.imgs?.[0] || item.img,
+                        stockMaximo: inventarioItem.stock
+                    }
+
+                    if (item.cantidad > inventarioItem.stock) {
+                        itemActualizado.cantidad = inventarioItem.stock
+                    }
+
+                    return itemActualizado
+                })
+                .filter(item => item !== null)
+
+            localStorage.setItem("carrito", JSON.stringify(carritoValidado))
+            setItems(carritoValidado)
+        } catch (error) {
+            console.error("Error al validar el carrito:", error)
+            setItems(carritoGuardado)
+        } finally {
+            setValidando(false)
+        }
     }
 
     useEffect(() => {
@@ -17,29 +64,29 @@ function CarritoDrawer() {
             setIsOpen(true)
         }
 
+        const sincronizar = () => {
+            const carrito = JSON.parse(localStorage.getItem("carrito")) || []
+            setItems(carrito)
+        }
+
         window.addEventListener("abrirCarrito", abrirCarrito)
-        window.addEventListener("cambioCarrito", cargarCarrito)
+        window.addEventListener("cambioCarrito", sincronizar)
 
         return () => {
             window.removeEventListener("abrirCarrito", abrirCarrito)
-            window.removeEventListener("cambioCarrito", cargarCarrito)
+            window.removeEventListener("cambioCarrito", sincronizar)
         }
     }, [])
 
     useEffect(() => {
         if (isOpen) {
-            // 🔥 OPTIMIZACIÓN: Evita que el fondo "tiemble" al calcular el ancho exacto del scrollbar
-            const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
             document.body.style.overflow = "hidden"
-            document.body.style.paddingRight = `${scrollbarWidth}px`
         } else {
             document.body.style.overflow = "unset"
-            document.body.style.paddingRight = "0px"
         }
 
         return () => {
             document.body.style.overflow = "unset"
-            document.body.style.paddingRight = "0px"
         }
     }, [isOpen])
 
@@ -49,31 +96,31 @@ function CarritoDrawer() {
         window.dispatchEvent(new Event("cambioCarrito"))
     }
 
-    // ⚡ CORRECCIÓN: Ahora filtramos y editamos buscando por idUnico en vez de confiar en índices volátiles
-    const eliminarItem = (idUnico) => {
-        const nuevoCarrito = items.filter(item => item.idUnico !== idUnico)
+    const eliminarItem = (index) => {
+        let nuevoCarrito = [...items]
+        nuevoCarrito.splice(index, 1)
         guardarCarrito(nuevoCarrito)
     }
 
-    const incrementarCantidad = (idUnico) => {
-        const nuevoCarrito = items.map(item => {
-            if (item.idUnico === idUnico) {
-                if (item.stockMaximo && item.cantidad >= item.stockMaximo) return item
-                return { ...item, cantidad: item.cantidad + 1 }
-            }
-            return item
-        })
+    const incrementarCantidad = (index) => {
+        let nuevoCarrito = [...items]
+        const stockMaximo = nuevoCarrito[index].stockMaximo
+
+        if (stockMaximo && nuevoCarrito[index].cantidad >= stockMaximo) return
+
+        nuevoCarrito[index].cantidad += 1
         guardarCarrito(nuevoCarrito)
     }
 
-    const decrementarCantidad = (idUnico) => {
-        let nuevoCarrito = items.map(item => {
-            if (item.idUnico === idUnico) {
-                return { ...item, cantidad: item.cantidad - 1 }
-            }
-            return item
-        }).filter(item => item.cantidad > 0) // Si llega a 0 se elimina automáticamente de la lista
-        
+    const decrementarCantidad = (index) => {
+        let nuevoCarrito = [...items]
+
+        if (nuevoCarrito[index].cantidad <= 1) {
+            nuevoCarrito.splice(index, 1)
+        } else {
+            nuevoCarrito[index].cantidad -= 1
+        }
+
         guardarCarrito(nuevoCarrito)
     }
 
@@ -93,7 +140,6 @@ function CarritoDrawer() {
 
     return (
         <>
-            {/* Overlay */}
             {isOpen && (
                 <div
                     className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100] transition-opacity duration-300"
@@ -101,19 +147,16 @@ function CarritoDrawer() {
                 />
             )}
 
-            {/* Panel del Drawer */}
-            <div className={`fixed top-0 right-0 h-screen w-full sm:w-[440px] bg-white z-[101] shadow-2xl flex flex-col transition-transform duration-500 ease-out transform ${
-                isOpen ? "translate-x-0" : "translate-x-full"
-            }`}>
+            <div className={`fixed top-0 right-0 h-screen w-full sm:w-[440px] bg-white z-[101] shadow-2xl flex flex-col transition-transform duration-500 ease-out transform ${isOpen ? "translate-x-0" : "translate-x-full"
+                }`}>
 
-                {/* Cabecera del Drawer */}
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                     <h2 className="text-xs uppercase tracking-[0.2em] font-medium text-gray-900">
                         Bolsa de Compras ({items.length})
                     </h2>
                     <button
                         onClick={() => setIsOpen(false)}
-                        className="text-gray-400 hover:text-black transition-colors p-1 cursor-pointer"
+                        className="text-gray-400 hover:text-black transition-colors p-1"
                     >
                         <svg className="w-5 h-5 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -121,26 +164,28 @@ function CarritoDrawer() {
                     </button>
                 </div>
 
-                {/* Lista de productos */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
-                    {items.length === 0 ? (
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+                    {validando ? (
+                        <div className="h-full flex flex-col items-center justify-center gap-3">
+                            <div className="w-6 h-6 border-2 border-gray-200 border-t-black rounded-full animate-spin"></div>
+                            <p className="text-[10px] uppercase tracking-widest text-gray-400">Verificando disponibilidad...</p>
+                        </div>
+                    ) : items.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center space-y-2 pb-20">
                             <p className="text-xs uppercase tracking-widest text-gray-400">Tu bolsa está vacía</p>
                             <button
                                 onClick={() => setIsOpen(false)}
-                                className="text-[10px] uppercase tracking-wider text-black underline underline-offset-4 cursor-pointer"
+                                className="text-[10px] uppercase tracking-wider text-black underline underline-offset-4"
                             >
                                 Continuar mirando
                             </button>
                         </div>
                     ) : (
-                        items.map((item) => (
-                            // 🔥 CORRECCIÓN: idUnico garantiza que React modifique exactamente la fila correcta
-                            <div key={item.idUnico} className="flex gap-4 items-start border-b border-gray-50 pb-4">
-                                <div className="w-20 aspect-[3/4] bg-gray-50 overflow-hidden flex-shrink-0 rounded-lg border border-gray-100">
-                                    <img src={item.img || item.imgs?.[0]} className="w-full h-full object-cover" alt={item.marca} />
+                        items.map((item, index) => (
+                            <div key={index} className="flex gap-4 items-start border-b border-gray-50 pb-4">
+                                <div className="w-20 aspect-[3/4] bg-gray-50 overflow-hidden flex-shrink-0">
+                                    <img src={item.img || item.imgs?.[0]} className="w-full h-full object-cover" alt="" />
                                 </div>
-                                
                                 <div className="flex-1 min-w-0 flex flex-col justify-between h-full space-y-2">
                                     <div>
                                         <h3 className="text-xs uppercase tracking-wider text-gray-900 truncate font-medium">{item.marca}</h3>
@@ -150,28 +195,28 @@ function CarritoDrawer() {
                                     </div>
 
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                        <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                                             <button
-                                                onClick={() => decrementarCantidad(item.idUnico)}
-                                                className="px-2.5 py-1 text-xs hover:bg-gray-50 transition-colors font-medium cursor-pointer"
+                                                onClick={() => decrementarCantidad(index)}
+                                                className="px-2.5 py-1 text-xs hover:bg-gray-50 transition-colors font-medium"
                                             >
                                                 —
                                             </button>
-                                            <span className="px-3 py-1 text-[11px] font-medium w-8 text-center bg-gray-50/30">
+                                            <span className="px-3 py-1 text-[11px] font-medium w-8 text-center">
                                                 {item.cantidad || 1}
                                             </span>
                                             <button
-                                                onClick={() => incrementarCantidad(item.idUnico)}
+                                                onClick={() => incrementarCantidad(index)}
                                                 disabled={item.stockMaximo ? item.cantidad >= item.stockMaximo : false}
-                                                className="px-2.5 py-1 text-xs hover:bg-gray-50 transition-colors disabled:opacity-30 font-medium cursor-pointer"
+                                                className="px-2.5 py-1 text-xs hover:bg-gray-50 transition-colors disabled:opacity-30 font-medium"
                                             >
                                                 +
                                             </button>
                                         </div>
 
                                         <button
-                                            onClick={() => eliminarItem(item.idUnico)}
-                                            className="text-[10px] uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                                            onClick={() => eliminarItem(index)}
+                                            className="text-[10px] uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors"
                                         >
                                             Quitar
                                         </button>
@@ -186,7 +231,6 @@ function CarritoDrawer() {
                     )}
                 </div>
 
-                {/* Footer de totales fijo abajo */}
                 {items.length > 0 && (
                     <div className="p-6 border-t border-gray-100 bg-gray-50/50 space-y-4">
                         <div className="flex justify-between items-baseline">
@@ -196,14 +240,14 @@ function CarritoDrawer() {
                         <p className="text-[10px] text-gray-400 font-light leading-relaxed">
                             Los costos de envío y descuentos aplicables se gestionarán en el siguiente paso.
                         </p>
-                        <a
-                            href={`https://wa.me/51965856201?text=${generarMensajePedido()}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block w-full py-4 bg-black text-white text-xs uppercase tracking-[0.2em] font-medium hover:bg-zinc-800 transition-colors duration-300 text-center"
+                        <button
+                            onClick={() => {
+                                window.location.href = `https://wa.me/51965856201?text=${generarMensajePedido()}`
+                            }}
+                            className="w-full py-4 bg-black text-white text-xs uppercase tracking-[0.2em] font-medium hover:bg-zinc-800 transition-colors duration-300"
                         >
                             Procesar Pedido
-                        </a>
+                        </button>
                     </div>
                 )}
             </div>
