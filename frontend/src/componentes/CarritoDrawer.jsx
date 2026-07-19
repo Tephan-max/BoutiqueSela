@@ -48,6 +48,8 @@ function CarritoDrawer() {
 
             localStorage.setItem("carrito", JSON.stringify(carritoValidado))
             setItems(carritoValidado)
+
+            window.dispatchEvent(new Event("cambioCarrito"))
         } catch (error) {
             console.error("Error al validar el carrito:", error)
             setItems(carritoGuardado)
