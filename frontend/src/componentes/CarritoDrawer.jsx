@@ -142,12 +142,12 @@ function CarritoDrawer() {
 
     return (
         <>
-            {isOpen && (
-                <div
-                    className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100] transition-opacity duration-300"
-                    onClick={() => setIsOpen(false)}
-                />
-            )}
+            <div
+    className={`fixed inset-0 bg-black/50 z-[100] transition-opacity duration-300 ${
+        isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+    }`}
+    onClick={() => setIsOpen(false)}
+/>
 
             <div className={`fixed top-0 right-0 h-screen w-full sm:w-[440px] bg-white z-[101] shadow-2xl flex flex-col transition-transform duration-500 ease-out transform ${isOpen ? "translate-x-0" : "translate-x-full"
                 }`}>

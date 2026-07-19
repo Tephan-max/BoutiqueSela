@@ -257,9 +257,9 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
                                         <Producto producto={producto} />
 
                                         {agotado && (
-                                            <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] flex items-center justify-center">
+                                            <div className="absolute inset-0 bg-white/85 flex items-center justify-center">
                                                 <span className="text-[10px] uppercase tracking-[0.2em] font-medium text-gray-900 border border-gray-900 px-4 py-2 bg-white">
-                                                    Vendido
+                                                    Agotado
                                                 </span>
                                             </div>
                                         )}
