@@ -26,31 +26,75 @@ function DetalleProducto() {
     }, [idProducto]);
 
     useEffect(() => {
-        const handler = (respuesta) => {
-            const documento = respuesta.documento
-            const tipoDml = respuesta.tipo
+    const handler = (respuesta) => {
+        const documento = respuesta.documento
+        const tipoDml = respuesta.tipo
 
-            if (documento._id !== idProducto) return
+        if (documento._id !== idProducto) return
 
-            if (tipoDml === 'update') {
-                setProducto(documento)
+        if (tipoDml === 'update') {
+            setProducto(documento)
 
-                const varianteActual = documento.inventario?.find(item => item.talla === tallaSeleccionada)
-                if (!varianteActual || varianteActual.stock === 0) {
-                    const primeraTallaDisponible = documento.inventario?.find(item => item.stock > 0)
-                    setTallaSeleccionada(primeraTallaDisponible ? primeraTallaDisponible.talla : null)
-                    mostrarToast("Este producto se actualizó. Revisa la talla seleccionada", 'error')
-                }
+            const varianteActual = documento.inventario?.find(item => item.talla === tallaSeleccionada)
+            if (!varianteActual || varianteActual.stock === 0) {
+                const primeraTallaDisponible = documento.inventario?.find(item => item.stock > 0)
+                setTallaSeleccionada(primeraTallaDisponible ? primeraTallaDisponible.talla : null)
+                mostrarToast("Este producto se actualizó. Revisa la talla seleccionada", 'error')
             }
 
-            if (tipoDml === 'delete') {
-                setEliminado(true)
+            // 🔥 Limpiar o ajustar el carrito si este producto está guardado ahí
+            let carrito = JSON.parse(localStorage.getItem('carrito')) || []
+            let estaEnCarrito = carrito.some(item => item._id === documento._id)
+
+            if (estaEnCarrito) {
+                carrito = carrito
+                    .map(item => {
+                        if (item._id !== documento._id) return item
+
+                        const inventarioItem = documento.inventario?.find(inv => inv.talla === item.talla)
+
+                        if (!inventarioItem || inventarioItem.stock === 0) {
+                            return null
+                        }
+
+                        const itemActualizado = {
+                            ...item,
+                            marca: documento.marca,
+                            precio: documento.precio,
+                            img: documento.imgs?.[0] || item.img,
+                            stockMaximo: inventarioItem.stock
+                        }
+
+                        if (item.cantidad > inventarioItem.stock) {
+                            itemActualizado.cantidad = inventarioItem.stock
+                        }
+
+                        return itemActualizado
+                    })
+                    .filter(item => item !== null)
+
+                localStorage.setItem('carrito', JSON.stringify(carrito))
+                window.dispatchEvent(new Event("cambioCarrito"))
             }
         }
 
-        socket.on('actualizacionProductos', handler)
-        return () => socket.off('actualizacionProductos', handler)
-    }, [idProducto, tallaSeleccionada])
+        if (tipoDml === 'delete') {
+            setEliminado(true)
+
+            let carrito = JSON.parse(localStorage.getItem('carrito')) || []
+            let estaEnCarrito = carrito.some(item => item._id === documento._id)
+
+            if (estaEnCarrito) {
+                carrito = carrito.filter(item => item._id !== documento._id)
+                localStorage.setItem('carrito', JSON.stringify(carrito))
+                window.dispatchEvent(new Event("cambioCarrito"))
+            }
+        }
+    }
+
+    socket.on('actualizacionProductos', handler)
+    return () => socket.off('actualizacionProductos', handler)
+}, [idProducto, tallaSeleccionada])
 
     useEffect(() => {
         if (!idProducto) {
