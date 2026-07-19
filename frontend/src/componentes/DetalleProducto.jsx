@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import Cabecera from "./Cabecera";
 import Footer from "./Footer";
+import socket from '../socket.js'
 
 function DetalleProducto() {
     const [searchParams] = useSearchParams();
@@ -13,6 +14,7 @@ function DetalleProducto() {
     const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
     const [cargando, setCargando] = useState(true);
     const [toast, setToast] = useState(null);
+    const [eliminado, setEliminado] = useState(false);
 
     // 🔥 Fuerza a la página a empezar desde arriba cada vez que cambia el producto
     useEffect(() => {
@@ -22,6 +24,33 @@ function DetalleProducto() {
             behavior: "instant" // Usamos "instant" para que no se note el salto visual mientras carga
         });
     }, [idProducto]);
+
+    useEffect(() => {
+        const handler = (respuesta) => {
+            const documento = respuesta.documento
+            const tipoDml = respuesta.tipo
+
+            if (documento._id !== idProducto) return
+
+            if (tipoDml === 'update') {
+                setProducto(documento)
+
+                const varianteActual = documento.inventario?.find(item => item.talla === tallaSeleccionada)
+                if (!varianteActual || varianteActual.stock === 0) {
+                    const primeraTallaDisponible = documento.inventario?.find(item => item.stock > 0)
+                    setTallaSeleccionada(primeraTallaDisponible ? primeraTallaDisponible.talla : null)
+                    mostrarToast("Este producto se actualizó. Revisa la talla seleccionada", 'error')
+                }
+            }
+
+            if (tipoDml === 'delete') {
+                setEliminado(true)
+            }
+        }
+
+        socket.on('actualizacionProductos', handler)
+        return () => socket.off('actualizacionProductos', handler)
+    }, [idProducto, tallaSeleccionada])
 
     useEffect(() => {
         if (!idProducto) {
@@ -144,6 +173,26 @@ function DetalleProducto() {
         window.dispatchEvent(new Event("cambioCarrito"));
         mostrarToast("Añadido al guardarropa", 'exito');
     };
+
+    if (eliminado) {
+        return (
+            <div className="min-h-screen bg-white flex flex-col justify-between">
+                <Cabecera paths={[{ ruta: '/contacto', texto: 'Contacto' }, { ruta: '/carrito', texto: 'Carrito' }]} />
+                <div className="flex-1 flex flex-col justify-center items-center gap-6 px-4 py-32">
+                    <p className="text-center uppercase tracking-[0.25em] text-neutral-400 font-light text-xs">
+                        Esta pieza ya no está disponible
+                    </p>
+                    <Link
+                        to="/"
+                        className="text-[11px] font-medium uppercase tracking-[0.15em] text-neutral-900 border-b border-black pb-1 hover:opacity-70 transition-opacity"
+                    >
+                        Volver a la tienda
+                    </Link>
+                </div>
+                <Footer />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-white text-gray-900 font-sans antialiased flex flex-col justify-between select-none">
@@ -292,7 +341,7 @@ function DetalleProducto() {
                 </div>
             )}
 
-            
+
         </div>
     );
 }

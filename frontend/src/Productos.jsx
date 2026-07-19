@@ -40,12 +40,57 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
                 let indexProductoEnProductos = actualizacionProductos.findIndex(producto =>
                     producto._id == documento._id)
 
+                let carrito = JSON.parse(localStorage.getItem('carrito')) || []
+                let lista = carrito.filter(producto => producto._id == documento._id)
+
                 if (tipoDml === 'update') {
                     actualizacionProductos[indexProductoEnProductos] = documento
+
+                    if (lista.length !== 0) {
+                        carrito = carrito
+                            .map(producto => {
+                                if (producto._id !== documento._id) {
+                                    return producto
+                                }
+
+                                let obtenerInventario = documento.inventario.find(items => items.talla == producto.talla)
+
+                                if (!obtenerInventario || obtenerInventario.stock == 0) {
+                                    return null
+                                }
+
+                                const productoParaCarrito = {
+                                    idUnico: producto.idUnico,
+                                    _id: producto._id,
+                                    marca: documento.marca,
+                                    precio: documento.precio,
+                                    img: documento.imgs[0] || '',
+                                    talla: producto.talla,
+                                    cantidad: producto.cantidad,
+                                    stockMaximo: obtenerInventario.stock
+                                };
+
+                                if (producto.cantidad > obtenerInventario.stock) {
+                                    productoParaCarrito.cantidad = obtenerInventario.stock
+                                }
+
+                                return productoParaCarrito
+                            })
+                            .filter(producto => producto !== null)
+
+                        localStorage.setItem('carrito', JSON.stringify(carrito))
+                        window.dispatchEvent(new Event("cambioCarrito"))
+                    }
                 }
 
                 if (tipoDml === 'delete') {
                     actualizacionProductos.splice(indexProductoEnProductos, 1)
+
+                    if (lista.length !== 0) {
+                        carrito = carrito.filter(producto => producto._id !== documento._id)
+                        localStorage.setItem('carrito', JSON.stringify(carrito))
+                        window.dispatchEvent(new Event("cambioCarrito"))
+                    }
                 }
             }
 
@@ -63,7 +108,7 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
             const nombreDb = catSeleccionada === 'Accesorios' ? 'Accesorios o Complementos' : catSeleccionada;
             copiaProductos = copiaProductos.filter((producto) => producto.categoria === nombreDb)
         }
-        
+
         if (ordSeleccionado === 'Bajo') {
             copiaProductos.sort((a, b) => a.precio - b.precio)
         } else {
@@ -93,7 +138,7 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
                 {/* Filtros */}
                 <section className="border-b border-gray-100 pb-4 mb-8">
                     <div className="flex justify-between items-center gap-4">
-                        
+
                         {/* 📱 Filtro móvil */}
                         <div className="relative w-1/2 md:hidden">
                             <button
@@ -183,7 +228,7 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
                         No hay reservas ni apartados
                     </p>
                 </div>
-                
+
                 {/* Catálogo de Productos */}
                 {cargando ? (
                     <div className="flex flex-col items-center justify-center py-32 space-y-4">
@@ -200,9 +245,10 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
                             const stockTotal = producto.inventario?.reduce((acc, item) => acc + item.stock, 0) || 0
                             const esUltimaPieza = stockTotal === 1
                             const stockBajo = stockTotal > 1 && stockTotal <= 3
+                            const agotado = stockTotal === 0
 
                             return (
-                                <div 
+                                <div
                                     key={producto._id}
                                     onClick={() => navigate(`/producto?id=${producto._id}`)}
                                     className="group relative cursor-pointer active:scale-[0.98] transition-transform duration-150 select-none"
@@ -210,19 +256,35 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
                                     <div className="relative transition-all duration-300 md:group-hover:opacity-90">
                                         <Producto producto={producto} />
 
-                                        {(esUltimaPieza || stockBajo) && (
-                                            <div className={`absolute top-3 left-3 px-2.5 py-1 text-[9px] uppercase tracking-widest font-medium ${
-                                                esUltimaPieza ? 'bg-black text-white' : 'bg-white/90 backdrop-blur-sm text-gray-900 border border-gray-200'
-                                            }`}>
-                                                {esUltimaPieza ? 'Última pieza' : 'Pocas unidades'}
+                                        {agotado && (
+                                            <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] flex items-center justify-center">
+                                                <span className="text-[10px] uppercase tracking-[0.2em] font-medium text-gray-900 border border-gray-900 px-4 py-2 bg-white">
+                                                    Vendido
+                                                </span>
                                             </div>
                                         )}
 
-                                        <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm w-7 h-7 rounded-full flex items-center justify-center border border-gray-100 shadow-sm transition-transform duration-300 md:opacity-0 md:group-hover:opacity-100 md:group-hover:scale-110">
-                                            <svg className="w-3.5 h-3.5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 5l7 7-7-7" />
-                                            </svg>
-                                        </div>
+                                        {!agotado && (esUltimaPieza || stockBajo) && (
+                                            <>
+                                                <div className={`absolute top-3 left-3 px-2.5 py-1 text-[9px] uppercase tracking-widest font-medium ${esUltimaPieza ? 'bg-black text-white' : 'bg-white/90 backdrop-blur-sm text-gray-900 border border-gray-200'
+                                                    }`}>
+                                                    {esUltimaPieza ? 'Última pieza' : 'Pocas unidades'}
+                                                </div>
+                                                <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm w-7 h-7 rounded-full flex items-center justify-center border border-gray-100 shadow-sm transition-transform duration-300 md:group-hover:opacity-100 md:group-hover:scale-110">
+                                                    <svg className="w-3.5 h-3.5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 5l7 7-7-7" />
+                                                    </svg>
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {productosMostrar.length <= 3 && (
+                                            <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm w-7 h-7 rounded-full flex items-center justify-center border border-gray-100 shadow-sm transition-transform duration-300 md:opacity-0 md:group-hover:opacity-100 md:group-hover:scale-110">
+                                                <svg className="w-3.5 h-3.5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 5l7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )
@@ -230,7 +292,7 @@ function Productos({ categoria, setCategoria, orden, setOrden }) {
                     </div>
                 )}
             </main>
-            <Footer/>
+            <Footer />
         </div>
     )
 }
